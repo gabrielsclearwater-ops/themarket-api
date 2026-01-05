@@ -41,10 +41,11 @@ def get_price(ticker: str):
     ticker = ticker.upper()
 
     yahoo_url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={ticker}"
-    stooq_url = f"https://stooq.com/q/l/?s={ticker.lower()}&f=sd2t2ohlcv&h&e=json"
+    stooq_symbol = ticker.lower() + ".us"
+    stooq_url = f"https://stooq.com/q/l/?s={stooq_symbol}&f=sd2t2ohlcv&h&e=json"
 
+    # Try Yahoo first
     try:
-        # Try Yahoo first
         data = fetch_with_retry(yahoo_url)
         result = data["quoteResponse"]["result"]
         if result:
@@ -52,7 +53,7 @@ def get_price(ticker: str):
             if price is not None:
                 return {"ticker": ticker, "price": price}
     except:
-        pass  # Yahoo failed → fallback to Stooq
+        pass
 
     # Fallback to Stooq
     try:
@@ -92,7 +93,8 @@ def get_futures(symbol: str):
     symbol = symbol.upper()
 
     yahoo_url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}"
-    stooq_url = f"https://stooq.com/q/l/?s={symbol.lower()}&f=sd2t2ohlcv&h&e=json"
+    stooq_symbol = symbol.lower() + ".us"
+    stooq_url = f"https://stooq.com/q/l/?s={stooq_symbol}&f=sd2t2ohlcv&h&e=json"
 
     try:
         data = fetch_with_retry(yahoo_url)
@@ -124,7 +126,8 @@ def get_index(symbol: str):
     symbol = symbol.upper()
 
     yahoo_url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}"
-    stooq_url = f"https://stooq.com/q/l/?s={symbol.lower()}&f=sd2t2ohlcv&h&e=json"
+    stooq_symbol = symbol.lower() + ".us"
+    stooq_url = f"https://stooq.com/q/l/?s={stooq_symbol}&f=sd2t2ohlcv&h&e=json"
 
     try:
         data = fetch_with_retry(yahoo_url)
