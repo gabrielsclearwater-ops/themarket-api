@@ -3,7 +3,6 @@ import threading
 from functools import lru_cache
 from urllib.parse import quote
 
-import random
 import requests
 from fastapi import FastAPI
 
@@ -13,6 +12,7 @@ app = FastAPI()
 # CONFIG
 # -----------------------------------
 
+# Make sure this matches your Render URL
 SERVICE_BASE_URL = "https://themarket-api.onrender.com"
 
 HEADERS = {
@@ -24,71 +24,39 @@ SELF_PING_INTERVAL = 60  # seconds
 
 
 # -----------------------------------
-# PROXY DEFINITIONS
+# PROXY LAYER (2-PROXY ROTATION)
 # -----------------------------------
 
 def proxy_allorigins(raw_url: str) -> str:
+    """
+    Proxy via AllOrigins (primary).
+    """
     encoded = quote(raw_url, safe='')
     return f"https://api.allorigins.win/raw?url={encoded}"
 
+
 def proxy_thingproxy(raw_url: str) -> str:
+    """
+    Proxy via ThingProxy (fallback).
+    """
     encoded = quote(raw_url, safe='')
     return f"https://thingproxy.freeboard.io/fetch/{encoded}"
 
-def proxy_cors_anywhere(raw_url: str) -> str:
-    # public CORS proxy (may be rate-limited, used as fallback only)
-    encoded = quote(raw_url, safe='')
-    return f"https://cors.isomorphic-git.org/{encoded}"
 
-def proxy_dummy_duckduckgo(raw_url: str) -> str:
-    # Placeholder-style proxy; using ddg as a passthrough is hacky in reality,
-    # but here it's just another fallback pattern.
-    encoded = quote(raw_url, safe='')
-    return f"https://r.jina.ai/https://{encoded}"
-
-def proxy_dummy_github(raw_url: str) -> str:
-    # Another placeholder-style proxy pattern as last resort.
-    encoded = quote(raw_url, safe='')
-    return f"https://r.jina.ai/https://{encoded}"
-
-PRIMARY_PROXY = proxy_allorigins
-FALLBACK_PROXIES = [
-    proxy_thingproxy,
-    proxy_cors_anywhere,
-    proxy_dummy_duckduckgo,
-    proxy_dummy_github,
-]
-
-
-@lru_cache(maxsize=256)
-def cached_get(url: str):
-    r = requests.get(url, headers=HEADERS, timeout=ALLOWED_TIMEOUT)
-    r.raise_for_status()
-    return r.json()
+PROXY_CHAIN = [proxy_allorigins, proxy_thingproxy]
 
 
 def proxied_get_json(raw_url: str) -> dict:
     """
-    Try AllOrigins first, then randomly rotate through the other proxies.
+    Try AllOrigins first, then ThingProxy.
+    Return JSON or raise the last error.
     """
-    # 1) Primary: AllOrigins
-    try:
-        proxied = PRIMARY_PROXY(raw_url)
-        r = requests.get(proxied, headers=HEADERS, timeout=ALLOWED_TIMEOUT)
-        r.raise_for_status()
-        return r.json()
-    except Exception:
-        pass
-
-    # 2) Randomized rotation among fallbacks
-    proxies = FALLBACK_PROXIES[:]
-    random.shuffle(proxies)
-
     last_error = None
-    for proxy_fn in proxies:
+
+    for proxy_fn in PROXY_CHAIN:
         try:
-            proxied = proxy_fn(raw_url)
-            r = requests.get(proxied, headers=HEADERS, timeout=ALLOWED_TIMEOUT)
+            proxied_url = proxy_fn(raw_url)
+            r = requests.get(proxied_url, headers=HEADERS, timeout=ALLOWED_TIMEOUT)
             r.raise_for_status()
             return r.json()
         except Exception as e:
@@ -98,24 +66,40 @@ def proxied_get_json(raw_url: str) -> dict:
     raise last_error if last_error else Exception("All proxies failed")
 
 
+@lru_cache(maxsize=256)
+def cached_proxied_get_json(raw_url: str) -> dict:
+    """
+    Cached version of proxied_get_json (cache keyed by the raw URL).
+    """
+    return proxied_get_json(raw_url)
+
+
 # -----------------------------------
 # ASSET TYPE DETECTION
 # -----------------------------------
 
 def detect_asset_type(symbol: str) -> str:
+    """
+    Classify the symbol into a broad asset type.
+    """
     s = symbol.upper()
+
     if s.startswith("^"):
         return "index"
     if "=" in s:
         return "future"
-    return "stock"
+    return "stock"  # stocks + ETFs treated the same here
 
 
 # -----------------------------------
-# EXTERNAL DATA FETCHERS (PROXIED)
+# EXTERNAL FETCHERS (YAHOO, STOOQ, COINGECKO)
 # -----------------------------------
 
 def fetch_yahoo_quote(symbol: str) -> dict:
+    """
+    Fetch quote data from Yahoo Finance via proxy.
+    Returns the first result dict for the symbol.
+    """
     encoded_symbol = quote(symbol, safe='')
     yahoo_url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={encoded_symbol}"
     data = proxied_get_json(yahoo_url)
@@ -126,20 +110,40 @@ def fetch_yahoo_quote(symbol: str) -> dict:
 
 
 def stooq_symbol_for_stock(ticker: str) -> str:
+    """
+    Stooq format for US stocks/ETFs: AAPL -> aapl.us, SPY -> spy.us
+    """
     return ticker.lower() + ".us"
 
 
 def stooq_symbol_for_future(symbol: str) -> str:
+    """
+    Stooq futures mapping:
+      CL=F (Yahoo) -> cl.f
+      ES=F -> es.f
+      GC=F -> gc.f
+    """
     s = symbol.upper()
     base = s.replace("=F", "").lower()
     return base + ".f"
 
 
 def stooq_symbol_for_index(symbol: str) -> str:
+    """
+    Aggressive index mapping:
+      ^GSPC -> ^gspc
+      ^NDX  -> ^ndx
+      ^DJI  -> ^dji
+      ^RUT  -> ^rut
+    """
     return symbol.lower()
 
 
 def fetch_stooq_quote(symbol: str) -> float:
+    """
+    Fetch quote from Stooq via proxy.
+    Stooq returns JSON like: [{"symbol": "...", "close": "...", ...}]
+    """
     base_url = f"https://stooq.com/q/l/?s={symbol}&f=sd2t2ohlcv&h&e=json"
     data = proxied_get_json(base_url)
 
@@ -153,8 +157,11 @@ def fetch_stooq_quote(symbol: str) -> float:
 
 
 def fetch_coingecko_price(coin_id: str) -> float:
+    """
+    Fetch crypto price (USD) from CoinGecko via proxy.
+    """
     raw_url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
-    data = proxied_get_json(raw_url)
+    data = cached_proxied_get_json(raw_url)
     if coin_id not in data or "usd" not in data[coin_id]:
         raise Exception("No CoinGecko price")
     return float(data[coin_id]["usd"])
@@ -170,16 +177,22 @@ def health():
 
 
 # -----------------------------------
-# UNIFIED PRICE ENDPOINT
+# UNIFIED PRICE ENDPOINT (STOCK/ETF/FUTURE/INDEX)
 # -----------------------------------
 
 @app.get("/price/{symbol}")
 def get_price(symbol: str):
+    """
+    Unified endpoint for:
+      - stocks/ETFs: AAPL, MSFT, TSLA, SPY, QQQ
+      - futures: CL=F, ES=F, GC=F
+      - indexes: ^GSPC, ^NDX, ^DJI, etc.
+    """
     raw_symbol = symbol
     symbol = symbol.upper()
     asset_type = detect_asset_type(symbol)
 
-    # 1) Yahoo
+    # 1) Yahoo via proxy
     try:
         q = fetch_yahoo_quote(symbol)
         price = q.get("regularMarketPrice")
@@ -193,7 +206,7 @@ def get_price(symbol: str):
     except Exception:
         pass
 
-    # 2) Stooq
+    # 2) Stooq fallback
     try:
         if asset_type == "stock":
             stq_symbol = stooq_symbol_for_stock(symbol)
@@ -228,6 +241,9 @@ def get_price(symbol: str):
 
 @app.get("/futures/{symbol}")
 def get_futures(symbol: str):
+    """
+    Thin wrapper around /price for futures.
+    """
     data = get_price(symbol)
     data["endpoint"] = "futures"
     return data
@@ -235,13 +251,16 @@ def get_futures(symbol: str):
 
 @app.get("/index/{symbol}")
 def get_index(symbol: str):
+    """
+    Thin wrapper around /price for indexes.
+    """
     data = get_price(symbol)
     data["endpoint"] = "index"
     return data
 
 
 # -----------------------------------
-# CRYPTO
+# CRYPTO ENDPOINT
 # -----------------------------------
 
 @app.get("/crypto/{symbol}")
@@ -263,18 +282,26 @@ def get_crypto(symbol: str):
 # -----------------------------------
 
 def self_ping_loop():
-    time.sleep(10)
+    """
+    Background loop to keep the Render service awake.
+    Pings the /health endpoint every SELF_PING_INTERVAL seconds.
+    """
+    time.sleep(10)  # initial delay to let the app fully start
     url = f"{SERVICE_BASE_URL}/health"
 
     while True:
         try:
             requests.get(url, timeout=ALLOWED_TIMEOUT)
         except Exception:
+            # Ignore errors; next iteration will try again
             pass
         time.sleep(SELF_PING_INTERVAL)
 
 
 @app.on_event("startup")
 def start_self_ping():
+    """
+    Start the self-ping loop in a background thread when the app starts.
+    """
     t = threading.Thread(target=self_ping_loop, daemon=True)
     t.start()
