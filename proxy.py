@@ -2,67 +2,98 @@ import requests
 from fastapi import FastAPI
 from functools import lru_cache
 import time
+from urllib.parse import quote_plus
 
 app = FastAPI()
 
 # -----------------------------------
-# GLOBAL HEADERS (Fix #1: User-Agent)
+# GLOBAL HEADERS
 # -----------------------------------
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 }
 
 # -----------------------------------
-# CACHED GET (prevents rate limits)
+# BASIC CACHED GET
 # -----------------------------------
 @lru_cache(maxsize=256)
-def cached_get(url):
+def cached_get(url: str):
     r = requests.get(url, headers=HEADERS, timeout=10)
     r.raise_for_status()
     return r.json()
 
 # -----------------------------------
-# RETRY WRAPPER (handles temporary 429)
+# YAHOO VIA ALLORIGINS (PRIMARY)
 # -----------------------------------
-def fetch_with_retry(url, retries=3):
-    for i in range(retries):
-        r = requests.get(url, headers=HEADERS, timeout=10)
-        if r.status_code != 429:
-            r.raise_for_status()
-            return r.json()
-        time.sleep(0.5 * (i + 1))  # exponential backoff
-    raise Exception("Yahoo rate limit")
+def fetch_yahoo_quote(symbol: str):
+    """
+    Fetch quote data from Yahoo Finance using AllOrigins proxy.
+    This avoids Render IP rate limits.
+    """
+    yahoo_url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={quote_plus(symbol)}"
+    proxied = f"https://api.allorigins.win/raw?url={quote_plus(yahoo_url)}"
+
+    r = requests.get(proxied, headers=HEADERS, timeout=10)
+    if r.status_code == 429:
+        raise Exception("Yahoo rate limit via proxy")
+    r.raise_for_status()
+    data = r.json()
+    result = data.get("quoteResponse", {}).get("result", [])
+    if not result:
+        raise Exception("No Yahoo data for symbol")
+    return result[0]
 
 # -----------------------------------
-# STOCK PRICE (Yahoo + Stooq fallback)
+# STOOQ FALLBACK HELPERS
+# -----------------------------------
+def stooq_symbol_us(ticker: str) -> str:
+    """
+    Convert a US stock ticker into Stooq's expected format.
+    Example: AAPL -> aapl.us
+    """
+    return ticker.lower() + ".us"
+
+def fetch_stooq_quote(symbol: str):
+    """
+    Fetch quote from Stooq.
+    Stooq returns JSON like: [{"symbol": "...", "close": "...", ...}]
+    """
+    url = f"https://stooq.com/q/l/?s={symbol}&f=sd2t2ohlcv&h&e=json"
+    r = requests.get(url, headers=HEADERS, timeout=10)
+    r.raise_for_status()
+    data = r.json()
+    if not isinstance(data, list) or not data:
+        raise Exception("No Stooq data")
+    row = data[0]
+    close = row.get("close")
+    if not close or close == "N/A":
+        raise Exception("Stooq close not available")
+    return float(close)
+
+# -----------------------------------
+# STOCK PRICE (Yahoo → Stooq sequential)
 # -----------------------------------
 @app.get("/price/{ticker}")
 def get_price(ticker: str):
     ticker = ticker.upper()
 
-    yahoo_url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={ticker}"
-    stooq_symbol = ticker.lower() + ".us"
-    stooq_url = f"https://stooq.com/q/l/?s={stooq_symbol}&f=sd2t2ohlcv&h&e=json"
-
-    # Try Yahoo first
+    # 1) Try Yahoo via AllOrigins
     try:
-        data = fetch_with_retry(yahoo_url)
-        result = data["quoteResponse"]["result"]
-        if result:
-            price = result[0].get("regularMarketPrice")
-            if price is not None:
-                return {"ticker": ticker, "price": price}
-    except:
+        q = fetch_yahoo_quote(ticker)
+        price = q.get("regularMarketPrice")
+        if price is not None:
+            return {"source": "yahoo", "ticker": ticker, "price": price}
+    except Exception as e:
+        # print(e)  # you can log if needed
         pass
 
-    # Fallback to Stooq
+    # 2) Fallback to Stooq with .us suffix
     try:
-        data = requests.get(stooq_url, timeout=10).json()
-        if isinstance(data, list) and len(data) > 0:
-            close_price = data[0].get("close")
-            if close_price not in (None, "N/A"):
-                return {"ticker": ticker, "price": float(close_price)}
-    except:
+        stq_symbol = stooq_symbol_us(ticker)
+        price = fetch_stooq_quote(stq_symbol)
+        return {"source": "stooq", "ticker": ticker, "price": price}
+    except Exception as e:
+        # print(e)
         pass
 
     return {"error": "Invalid ticker or no data available"}
@@ -74,78 +105,64 @@ def get_price(ticker: str):
 def get_crypto(symbol: str):
     symbol = symbol.lower()
     url = f"https://api.coingecko.com/api/v3/simple/price?ids={symbol}&vs_currencies=usd"
-
     try:
         data = cached_get(url)
-        if symbol in data:
-            return {"symbol": symbol.upper(), "price": data[symbol]["usd"]}
+        if symbol in data and "usd" in data[symbol]:
+            return {"source": "coingecko", "symbol": symbol.upper(), "price": data[symbol]["usd"]}
     except Exception as e:
         return {"error": str(e)}
-
     return {"error": "Invalid crypto symbol"}
 
 # -----------------------------------
-# FUTURES (Yahoo + Stooq fallback)
-# Example: CL=F, ES=F, GC=F
+# FUTURES (Yahoo → Stooq sequential, same pattern)
+# Example symbols: CL=F, ES=F, GC=F
 # -----------------------------------
 @app.get("/futures/{symbol}")
 def get_futures(symbol: str):
     symbol = symbol.upper()
 
-    yahoo_url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}"
-    stooq_symbol = symbol.lower() + ".us"
-    stooq_url = f"https://stooq.com/q/l/?s={stooq_symbol}&f=sd2t2ohlcv&h&e=json"
-
+    # 1) Try Yahoo
     try:
-        data = fetch_with_retry(yahoo_url)
-        result = data["quoteResponse"]["result"]
-        if result:
-            price = result[0].get("regularMarketPrice")
-            if price is not None:
-                return {"symbol": symbol, "price": price}
-    except:
+        q = fetch_yahoo_quote(symbol)
+        price = q.get("regularMarketPrice")
+        if price is not None:
+            return {"source": "yahoo", "symbol": symbol, "price": price}
+    except Exception:
         pass
 
+    # 2) Try Stooq (not all futures map cleanly; best-effort)
     try:
-        data = requests.get(stooq_url, timeout=10).json()
-        if isinstance(data, list) and len(data) > 0:
-            close_price = data[0].get("close")
-            if close_price not in (None, "N/A"):
-                return {"symbol": symbol, "price": float(close_price)}
-    except:
+        stq_symbol = symbol.lower()
+        price = fetch_stooq_quote(stq_symbol)
+        return {"source": "stooq", "symbol": symbol, "price": price}
+    except Exception:
         pass
 
-    return {"error": "Invalid futures symbol"}
+    return {"error": "Invalid futures symbol or no data available"}
 
 # -----------------------------------
-# INDEXES (Yahoo + Stooq fallback)
+# INDEXES (Yahoo → Stooq sequential)
 # Example: ^GSPC, ^NDX, ^DJI
 # -----------------------------------
 @app.get("/index/{symbol}")
 def get_index(symbol: str):
     symbol = symbol.upper()
 
-    yahoo_url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}"
-    stooq_symbol = symbol.lower() + ".us"
-    stooq_url = f"https://stooq.com/q/l/?s={stooq_symbol}&f=sd2t2ohlcv&h&e=json"
-
+    # 1) Try Yahoo
     try:
-        data = fetch_with_retry(yahoo_url)
-        result = data["quoteResponse"]["result"]
-        if result:
-            price = result[0].get("regularMarketPrice")
-            if price is not None:
-                return {"symbol": symbol, "price": price}
-    except:
+        q = fetch_yahoo_quote(symbol)
+        price = q.get("regularMarketPrice")
+        if price is not None:
+            return {"source": "yahoo", "symbol": symbol, "price": price}
+    except Exception:
         pass
 
+    # 2) Stooq often uses different codes for indexes; we try lowercase directly
     try:
-        data = requests.get(stooq_url, timeout=10).json()
-        if isinstance(data, list) and len(data) > 0:
-            close_price = data[0].get("close")
-            if close_price not in (None, "N/A"):
-                return {"symbol": symbol, "price": float(close_price)}
-    except:
+        stq_symbol = symbol.lower()
+        price = fetch_stooq_quote(stq_symbol)
+        return {"source": "stooq", "symbol": symbol, "price": price}
+    except Exception:
         pass
 
-    return {"error": "Invalid index symbol"}
+    return {"error": "Invalid index symbol or no data available"}
