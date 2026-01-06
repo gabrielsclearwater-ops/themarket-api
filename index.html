@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Market Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #05060a;
+      --bg-alt: #0d1117;
+      --panel: #111827;
+      --panel-alt: #020617;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59,130,246,0.2);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --danger: #f97373;
+      --success: #22c55e;
+      --warning: #eab308;
+      --border: #1f2937;
+      --shadow-soft: 0 18px 35px rgba(0,0,0,0.55);
+      --radius-lg: 14px;
+      --radius-md: 9px;
+      --radius-pill: 999px;
+      --transition-fast: 0.15s ease-out;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      background: radial-gradient(circle at top, #020617 0, #020617 35%, #000 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px 32px;
+      gap: 18px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      background: rgba(34,197,94,0.08);
+      color: #4ade80;
+      border: 1px solid rgba(34,197,94,0.35);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .status-pill {
+      border-radius: var(--radius-pill);
+      padding: 6px 10px;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34,197,94,0.08);
+      color: #4ade80;
+      border: 1px solid rgba(34,197,94,0.3);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 16px rgba(34,197,94,0.8);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-radius: var(--radius-pill);
+      padding: 4px;
+      background: radial-gradient(circle at top left, #111827, #020617);
+      border: 1px solid rgba(148,163,184,0.18);
+      box-shadow: 0 16px 40px rgba(15,23,42,0.95);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(18px);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 13px;
+      border-radius: var(--radius-pill);
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .tab span.label {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+    }
+
+    .tab span.badge-mini {
+      padding: 2px 6px;
+      border-radius: var(--radius-pill);
+      font-size: 10px;
+      border: 1px solid rgba(148,163,184,0.5);
+      background: rgba(15,23,42,0.8);
+    }
+
+    .tab.active {
+      background: radial-gradient(circle at top, rgba(59,130,246,0.3), transparent 55%);
+      color: #e5e7eb;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(15,23,42,1);
+    }
+
+    .tab.active span.badge-mini {
+      border-color: rgba(59,130,246,0.7);
+      background: rgba(15,23,42,0.9);
+      color: #bfdbfe;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .panel {
+      background: radial-gradient(circle at top left, var(--panel), var(--panel-alt));
+      border-radius: var(--radius-lg);
+      padding: 14px 14px 16px;
+      border: 1px solid rgba(148,163,184,0.16);
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #9ca3af;
+    }
+
+    .panel-subtitle {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .panel-tools {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .pill {
+      padding: 3px 7px;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(148,163,184,0.3);
+      background: rgba(15,23,42,0.85);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(148,163,184,0.9);
+    }
+
+    .pill.small {
+      font-size: 10px;
+      padding: 2px 6px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .input-group {
+      flex: 1;
+      min-width: 120px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #6b7280;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 7px 9px;
+      border-radius: 9px;
+      border: 1px solid rgba(148,163,184,0.3);
+      background: rgba(15,23,42,0.9);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      border-color: rgba(59,130,246,0.8);
+      box-shadow: 0 0 0 1px rgba(37,99,235,0.8);
+      background: #020617;
+    }
+
+    button {
+      border-radius: 9px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 8px 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: radial-gradient(circle at top left, #2563eb, #1d4ed8);
+      color: white;
+      box-shadow: 0 12px 30px rgba(37,99,235,0.45);
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), filter var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    button.secondary {
+      background: rgba(15,23,42,0.95);
+      color: #e5e7eb;
+      box-shadow: none;
+      border: 1px solid rgba(148,163,184,0.3);
+    }
+
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      box-shadow: none;
+      border-radius: var(--radius-pill);
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    button.danger {
+      background: radial-gradient(circle at top, #b91c1c, #7f1d1d);
+      box-shadow: 0 12px 30px rgba(185,28,28,0.55);
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-0.5px);
+      filter: brightness(1.05);
+      box-shadow: 0 16px 38px rgba(37,99,235,0.65);
+    }
+
+    button.secondary:hover:not(:disabled) {
+      box-shadow: 0 12px 28px rgba(15,23,42,0.9);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 600px) {
+      .metrics-row {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+      }
+    }
+
+    .metric-card {
+      background: radial-gradient(circle at top left, rgba(15,23,42,0.95), rgba(15,23,42,0.7));
+      border-radius: var(--radius-md);
+      padding: 8px 9px;
+      border: 1px solid rgba(31,41,55,0.9);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .metric-label {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #6b7280;
+    }
+
+    .metric-value {
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-sub {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .metric-value.green {
+      color: var(--success);
+    }
+
+    .metric-value.red {
+      color: var(--danger);
+    }
+
+    .metric-value.muted {
+      color: var(--muted);
+    }
+
+    .list {
+      margin-top: 4px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(30,64,175,0.7);
+      background: radial-gradient(circle at top left, rgba(15,23,42,0.95), rgba(15,23,42,0.85));
+      max-height: 260px;
+      overflow: auto;
+      font-size: 12px;
+    }
+
+    .list-header,
+    .list-row {
+      display: grid;
+      grid-template-columns: 0.8fr 0.6fr 0.6fr 0.8fr;
+      gap: 4px;
+      padding: 6px 8px;
+      align-items: center;
+    }
+
+    .list-header {
+      position: sticky;
+      top: 0;
+      background: rgba(15,23,42,0.98);
+      border-bottom: 1px solid rgba(30,64,175,0.8);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    .list-row:nth-child(odd) {
+      background: rgba(15,23,42,0.9);
+    }
+
+    .list-row:nth-child(even) {
+      background: rgba(15,23,42,0.8);
+    }
+
+    .list-row:hover {
+      background: rgba(30,64,175,0.35);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: var(--radius-pill);
+      font-size: 10px;
+      border: 1px solid rgba(148,163,184,0.5);
+      background: rgba(15,23,42,0.9);
+    }
+
+    .chip.bad {
+      border-color: rgba(248,113,113,0.7);
+      color: #fecaca;
+      background: rgba(127,29,29,0.8);
+    }
+
+    .chip.good {
+      border-color: rgba(52,211,153,0.7);
+      color: #bbf7d0;
+      background: rgba(6,78,59,0.8);
+    }
+
+    .chip.neutral {
+      border-color: rgba(148,163,184,0.7);
+      color: #e5e7eb;
+    }
+
+    .chip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(148,163,184,0.9);
+    }
+
+    .chip-dot.green {
+      background: #22c55e;
+    }
+
+    .chip-dot.red {
+      background: #f97373;
+    }
+
+    .chip-dot.yellow {
+      background: #eab308;
+    }
+
+    .alert {
+      font-size: 11px;
+      padding: 6px 8px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(148,163,184,0.25);
+      background: rgba(15,23,42,0.9);
+      color: var(--muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .alert span.icon {
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .alert.error {
+      border-color: rgba(248,113,113,0.8);
+      color: #fecaca;
+      background: rgba(127,29,29,0.85);
+    }
+
+    .alert.success {
+      border-color: rgba(52,211,153,0.8);
+      color: #bbf7d0;
+      background: rgba(6,78,59,0.85);
+    }
+
+    .section {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section.active {
+      display: flex;
+    }
+
+    canvas {
+      width: 100%;
+      height: 140px;
+      border-radius: var(--radius-md);
+      background: radial-gradient(circle at top, rgba(15,23,42,0.96), rgba(15,23,42,0.9));
+      border: 1px solid rgba(30,64,175,0.85);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 6px 7px;
+      text-align: right;
+      border-bottom: 1px solid rgba(31,41,55,0.95);
+    }
+
+    th:first-child, td:first-child {
+      text-align: left;
+    }
+
+    thead {
+      background: rgba(15,23,42,0.98);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    th {
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 10px;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    tbody tr:nth-child(odd) {
+      background: rgba(15,23,42,0.92);
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(15,23,42,0.86);
+    }
+
+    tbody tr:hover {
+      background: rgba(30,64,175,0.45);
+    }
+
+    .row-risk-low {
+      box-shadow: inset 3px 0 0 #22c55e;
+    }
+    .row-risk-med {
+      box-shadow: inset 3px 0 0 #f59e0b;
+    }
+    .row-risk-high {
+      box-shadow: inset 3px 0 0 #ef4444;
+    }
+
+    .text-green { color: var(--success); }
+    .text-red { color: var(--danger); }
+    .text-muted { color: var(--muted); }
+
+    footer {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #6b7280;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .monospace {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="title-block">
+        <h1>
+          Market Console
+          <span class="badge">Live backend: Render</span>
+        </h1>
+        <div class="subtitle">
+          Unified prices, portfolios, and risk — fed by your FastAPI backend.
+        </div>
+      </div>
+      <div class="status-pill" id="backend-status-pill">
+        <span class="status-dot"></span>
+        <span>Backend: checking...</span>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-section="dashboard">
+        <span class="label">Dashboard</span>
+        <span class="badge-mini">Live lookup</span>
+      </button>
+      <button class="tab" data-section="search">
+        <span class="label">Search</span>
+        <span class="badge-mini">Tickers & futures</span>
+      </button>
+      <button class="tab" data-section="portfolio">
+        <span class="label">Portfolio</span>
+        <span class="badge-mini">Risk & P/L</span>
+      </button>
+    </nav>
+
+    <main>
+      <!-- LEFT COLUMN -->
+      <section id="section-left" class="panel">
+        <!-- Dashboard section -->
+        <div id="section-dashboard" class="section active">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Quick dashboard</div>
+              <div class="panel-subtitle">Check any stock, ETF, index, or future in one shot.</div>
+            </div>
+            <div class="panel-tools">
+              <span class="pill small">
+                <span class="pill-dot"></span> Cached client-side
+              </span>
+            </div>
+          </div>
+
+          <div class="input-row">
+            <div class="input-group">
+              <label for="dash-symbol">Symbol</label>
+              <input type="text" id="dash-symbol" placeholder="AAPL, SPY, ES=F, ^GSPC" />
+            </div>
+            <div class="input-group">
+              <label>&nbsp;</label>
+              <button id="dash-lookup">Lookup</button>
+            </div>
+          </div>
+
+          <div id="dash-alert" class="alert" style="display:none;"></div>
+
+          <div id="dash-metrics" style="display:none;">
+            <div class="metrics-row">
+              <div class="metric-card">
+                <div class="metric-label">Last price</div>
+                <div class="metric-value" id="dash-price"></div>
+                <div class="metric-sub" id="dash-asset-meta"></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Market state</div>
+                <div class="metric-value muted" id="dash-market-state"></div>
+                <div class="metric-sub" id="dash-exchange"></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Previous close</div>
+                <div class="metric-value muted" id="dash-prev-close"></div>
+                <div class="metric-sub" id="dash-source"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div class="panel-header" style="margin-bottom:6px;">
+              <div class="panel-title">Recent lookups</div>
+              <div class="panel-subtitle">Most recent symbols you checked this session.</div>
+            </div>
+            <div class="list" id="recent-list"></div>
+          </div>
+        </div>
+
+        <!-- Search section -->
+        <div id="section-search" class="section">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Symbol search</div>
+              <div class="panel-subtitle">Deep dive into a single instrument with a 90-day chart.</div>
+            </div>
+            <div class="panel-tools">
+              <span class="pill small">
+                <span class="pill-dot"></span> Chart from /price endpoint
+              </span>
+            </div>
+          </div>
+
+          <div class="input-row">
+            <div class="input-group">
+              <label for="search-symbol">Symbol</label>
+              <input type="text" id="search-symbol" placeholder="e.g. TSLA, NQ=F, ^NDX" />
+            </div>
+            <div class="input-group">
+              <label for="search-kind">Asset</label>
+              <select id="search-kind">
+                <option value="auto">Auto-detect (default)</option>
+                <option value="stock">Stock / ETF</option>
+                <option value="future">Future</option>
+                <option value="index">Index</option>
+                <option value="crypto">Crypto (CoinGecko)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>&nbsp;</label>
+              <button id="search-go">Search</button>
+            </div>
+          </div>
+
+          <div id="search-alert" class="alert" style="display:none;"></div>
+
+          <div id="search-metrics" style="display:none; margin-top:6px;">
+            <div class="metrics-row">
+              <div class="metric-card">
+                <div class="metric-label">Last price</div>
+                <div class="metric-value" id="search-price"></div>
+                <div class="metric-sub" id="search-asset-meta"></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Range (90D)</div>
+                <div class="metric-value muted" id="search-range"></div>
+                <div class="metric-sub" id="search-drawdown"></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Backend source</div>
+                <div class="metric-value muted" id="search-source"></div>
+                <div class="metric-sub" id="search-backend-meta"></div>
+              </div>
+            </div>
+
+            <div style="margin-top:10px;">
+              <canvas id="price-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Portfolio section (left column limited info) -->
+        <div id="section-portfolio" class="section">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Portfolio input</div>
+              <div class="panel-subtitle">Define positions and risk; the right panel computes P/L.</div>
+            </div>
+            <div class="panel-tools">
+              <span class="pill small">
+                <span class="pill-dot"></span> Stored in localStorage
+              </span>
+            </div>
+          </div>
+
+          <div class="input-row">
+            <div class="input-group">
+              <label for="pf-symbol">Symbol</label>
+              <input type="text" id="pf-symbol" placeholder="MSFT, ES=F, BTC" />
+            </div>
+            <div class="input-group">
+              <label for="pf-qty">Quantity</label>
+              <input type="number" id="pf-qty" step="0.0001" />
+            </div>
+          </div>
+
+          <div class="input-row">
+            <div class="input-group">
+              <label for="pf-cost">Cost basis (per unit)</label>
+              <input type="number" id="pf-cost" step="0.0001" />
+            </div>
+            <div class="input-group">
+              <label for="pf-risk">Risk</label>
+              <select id="pf-risk">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-row">
+            <div class="input-group">
+              <label for="pf-notes">Notes (optional)</label>
+              <input type="text" id="pf-notes" placeholder="Sector, thesis, etc." />
+            </div>
+            <div class="input-group">
+              <label>&nbsp;</label>
+              <div style="display:flex; gap:6px;">
+                <button id="pf-add">Add / Update</button>
+                <button id="pf-clear" class="secondary">Clear all</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="pf-alert" class="alert" style="display:none;"></div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN -->
+      <section class="panel" id="right-panel">
+        <div id="right-dashboard" class="section active">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">API & cache status</div>
+              <div class="panel-subtitle">Client-side protection to avoid hammering your backend.</div>
+            </div>
+            <div class="panel-tools">
+              <span class="pill small">
+                <span class="pill-dot"></span> Rate-limited
+              </span>
+              <span class="pill small">
+                <span class="pill-dot"></span> Cached by symbol
+              </span>
+            </div>
+          </div>
+
+          <div class="metrics-row">
+            <div class="metric-card">
+              <div class="metric-label">Requests (this session)</div>
+              <div class="metric-value" id="stat-requests">0</div>
+              <div class="metric-sub">Only successful calls.</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Cache hits</div>
+              <div class="metric-value green" id="stat-cache-hits">0</div>
+              <div class="metric-sub">Served without touching backend.</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Rate-limited drops</div>
+              <div class="metric-value red" id="stat-drops">0</div>
+              <div class="metric-sub">Suppressed to keep backend safe.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div class="alert">
+              <span class="icon">ℹ️</span>
+              <div>
+                Requests are queued and dispatched with a minimum spacing. Per-symbol cache keeps
+                recent lookups fresh for 30 seconds to avoid unnecessary hits.
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div class="panel-header" style="margin-bottom:6px;">
+              <div class="panel-title">Live symbol snapshot</div>
+              <div class="panel-subtitle">Most recent symbol data from the dashboard or search.</div>
+            </div>
+            <div id="snapshot-panel" class="metrics-row">
+              <div class="metric-card">
+                <div class="metric-label">Symbol</div>
+                <div class="metric-value" id="snapshot-symbol">—</div>
+                <div class="metric-sub" id="snapshot-type">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Price</div>
+                <div class="metric-value" id="snapshot-price">—</div>
+                <div class="metric-sub" id="snapshot-currency">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Source</div>
+                <div class="metric-value muted" id="snapshot-source">—</div>
+                <div class="metric-sub" id="snapshot-exchange">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="right-search" class="section">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Search details</div>
+              <div class="panel-subtitle">Extra fields & backend JSON inspector.</div>
+            </div>
+            <div class="panel-tools">
+              <button class="ghost" id="toggle-json">Raw JSON</button>
+            </div>
+          </div>
+
+          <div id="search-extra" style="font-size:11px; color:var(--muted);"></div>
+          <pre id="search-json" class="monospace" style="display:none; margin-top:8px; max-height:260px; overflow:auto;"></pre>
+        </div>
+
+        <div id="right-portfolio" class="section">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Portfolio overview</div>
+              <div class="panel-subtitle">Sorted by risk, P/L, or symbol with real-time quotes.</div>
+            </div>
+            <div class="panel-tools">
+              <span class="pill small">
+                <span class="pill-dot"></span> Live pricing via /price & /crypto
+              </span>
+            </div>
+          </div>
+
+          <div id="pf-table-wrapper" class="list" style="padding:0; max-height:280px;">
+            <table id="pf-table">
+              <thead>
+                <tr>
+                  <th data-sort="symbol">Symbol</th>
+                  <th data-sort="risk">Risk</th>
+                  <th data-sort="value">Value</th>
+                  <th data-sort="pl">P / L</th>
+                  <th data-sort="plPct">% P / L</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:6px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:11px; color:var(--muted);">
+            <div>Total portfolio value: <span id="pf-total-value">—</span></div>
+            <div>Last refresh: <span id="pf-last-refresh">—</span></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div>Client: cached + rate-limited &nbsp;|&nbsp; Backend: FastAPI on Render</div>
+      <div class="monospace">Base URL: <span id="base-url-display"></span></div>
+    </footer>
+  </div>
+
+  <script>
+    // ===== CONFIG =====
+    const API_BASE_URL = "https://themarket-api.onrender.com"; // change if needed
+    document.getElementById("base-url-display").textContent = API_BASE_URL;
+
+    // ===== SIMPLE IN-MEMORY CACHE (per symbol + endpoint) =====
+    const CACHE_TTL_MS = 30_000; // 30 seconds
+    const cache = new Map(); // key: endpoint+symbol, value: {data, ts}
+
+    // ===== SIMPLE CLIENT-SIDE RATE LIMITING =====
+    // Queue requests and dispatch at a steady pace to avoid bursts.
+    const REQUEST_INTERVAL_MS = 350; // minimum spacing between outbound requests
+    const requestQueue = [];
+    let isProcessingQueue = false;
+    let statRequests = 0;
+    let statCacheHits = 0;
+    let statDrops = 0;
+
+    function updateStatsUI() {
+      document.getElementById("stat-requests").textContent = statRequests;
+      document.getElementById("stat-cache-hits").textContent = statCacheHits;
+      document.getElementById("stat-drops").textContent = statDrops;
+    }
+
+    function enqueueRequest(task) {
+      requestQueue.push(task);
+      if (!isProcessingQueue) {
+        isProcessingQueue = true;
+        processQueue();
+      }
+    }
+
+    async function processQueue() {
+      while (requestQueue.length > 0) {
+        const task = requestQueue.shift();
+        try {
+          await task();
+        } catch (e) {
+          console.error("Request task failed:", e);
+        }
+        await new Promise(res => setTimeout(res, REQUEST_INTERVAL_MS));
+      }
+      isProcessingQueue = false;
+    }
+
+    function getCached(key) {
+      const entry = cache.get(key);
+      if (!entry) return null;
+      const age = Date.now() - entry.ts;
+      if (age > CACHE_TTL_MS) {
+        cache.delete(key);
+        return null;
+      }
+      return entry.data;
+    }
+
+    function setCached(key, data) {
+      cache.set(key, { data, ts: Date.now() });
+    }
+
+    // ===== RESILIENT FETCH LAYER =====
+    async function fetchJsonRateLimited(url, { cacheKey, forceRefresh = false } = {}) {
+      const key = cacheKey || url;
+
+      if (!forceRefresh) {
+        const c = getCached(key);
+        if (c) {
+          statCacheHits++;
+          updateStatsUI();
+          return c;
+        }
+      }
+
+      return new Promise((resolve, reject) => {
+        enqueueRequest(async () => {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+            const resp = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeout);
+
+            if (!resp.ok) {
+              throw new Error("HTTP " + resp.status);
+            }
+            const data = await resp.json();
+            statRequests++;
+            setCached(key, data);
+            updateStatsUI();
+            resolve(data);
+          } catch (err) {
+            console.error("fetchJsonRateLimited error", err);
+            reject(err);
+          }
+        });
+      });
+    }
+
+    // ===== TAB SWITCHING =====
+    const tabs = document.querySelectorAll(".tab");
+    const leftSections = {
+      dashboard: document.getElementById("section-dashboard"),
+      search: document.getElementById("section-search"),
+      portfolio: document.getElementById("section-portfolio"),
+    };
+    const rightSections = {
+      dashboard: document.getElementById("right-dashboard"),
+      search: document.getElementById("right-search"),
+      portfolio: document.getElementById("right-portfolio"),
+    };
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        const target = tab.getAttribute("data-section");
+        tabs.forEach(t => t.classList.toggle("active", t === tab));
+        Object.entries(leftSections).forEach(([key, el]) => el.classList.toggle("active", key === target));
+        Object.entries(rightSections).forEach(([key, el]) => el.classList.toggle("active", key === target));
+      });
+    });
+
+    // ===== BACKEND HEALTH CHECK =====
+    async function checkBackend() {
+      const pill = document.getElementById("backend-status-pill");
+      const text = pill.querySelector("span:nth-child(2)");
+      const dot = pill.querySelector(".status-dot");
+      try {
+        const resp = await fetch(API_BASE_URL + "/health", { cache: "no-store" });
+        if (!resp.ok) throw new Error("Not OK");
+        const data = await resp.json();
+        if (data && data.status === "ok") {
+          text.textContent = "Backend: healthy";
+          dot.style.background = "#22c55e";
+          dot.style.boxShadow = "0 0 16px rgba(34,197,94,0.8)";
+        } else {
+          throw new Error("Unexpected payload");
+        }
+      } catch {
+        text.textContent = "Backend: offline or unreachable";
+        dot.style.background = "#f97373";
+        dot.style.boxShadow = "0 0 16px rgba(248,113,113,0.8)";
+      }
+    }
+    checkBackend();
+
+    // ===== RECENT LOOKUPS =====
+    let recentLookups = [];
+    const recentList = document.getElementById("recent-list");
+    function pushRecent(symbol, price, source) {
+      symbol = symbol.toUpperCase();
+      recentLookups = [
+        { symbol, price, source, ts: new Date() },
+        ...recentLookups.filter(r => r.symbol !== symbol)
+      ].slice(0, 20);
+      renderRecent();
+    }
+    function renderRecent() {
+      if (recentLookups.length === 0) {
+        recentList.innerHTML = '<div style="padding:6px 8px; font-size:11px; color:#6b7280;">No symbols yet.</div>';
+        return;
+      }
+      const header = `
+        <div class="list-header">
+          <div>Symbol</div>
+          <div>Price</div>
+          <div>Source</div>
+          <div>Seen</div>
+        </div>`;
+      const rows = recentLookups.map(r => {
+        const agoMs = Date.now() - r.ts.getTime();
+        const mins = Math.floor(agoMs / 60000);
+        const ago = mins === 0 ? "just now" : mins + "m ago";
+        return `
+          <div class="list-row" data-symbol="${r.symbol}">
+            <div><span class="chip neutral"><span class="chip-dot"></span>${r.symbol}</span></div>
+            <div>${r.price != null ? r.price.toFixed(2) : "—"}</div>
+            <div>${r.source || "?"}</div>
+            <div>${ago}</div>
+          </div>`;
+      }).join("");
+      recentList.innerHTML = header + rows;
+
+      recentList.querySelectorAll(".list-row").forEach(row => {
+        row.addEventListener("click", () => {
+          const sym = row.getAttribute("data-symbol");
+          document.getElementById("dash-symbol").value = sym;
+          document.getElementById("search-symbol").value = sym;
+        });
+      });
+    }
+
+    // ===== SNAPSHOT PANEL =====
+    function updateSnapshot(info) {
+      if (!info) return;
+      document.getElementById("snapshot-symbol").textContent = info.symbol || "—";
+      document.getElementById("snapshot-type").textContent = info.asset_type || info.kind || "—";
+      document.getElementById("snapshot-price").textContent = info.price != null ? info.price.toFixed(2) : "—";
+      document.getElementById("snapshot-currency").textContent = info.currency || "";
+      document.getElementById("snapshot-source").textContent = info.source || "—";
+      document.getElementById("snapshot-exchange").textContent = info.exchangeName || "";
+    }
+
+    // ===== DASHBOARD LOOKUP =====
+    const dashLookupBtn = document.getElementById("dash-lookup");
+    const dashSymbolInput = document.getElementById("dash-symbol");
+    const dashAlert = document.getElementById("dash-alert");
+    const dashMetrics = document.getElementById("dash-metrics");
+
+    function showDashAlert(msg, isError = false) {
+      dashAlert.style.display = "flex";
+      dashAlert.textContent = "";
+      dashAlert.classList.toggle("error", isError);
+      dashAlert.classList.toggle("success", !isError);
+      dashAlert.innerHTML = `<span class="icon">${isError ? "⚠️" : "ℹ️"}</span><div>${msg}</div>`;
+    }
+
+    async function handleDashLookup() {
+      const raw = dashSymbolInput.value.trim();
+      if (!raw) {
+        showDashAlert("Enter a symbol to look up.", true);
+        dashMetrics.style.display = "none";
+        return;
+      }
+      const symbol = raw.toUpperCase();
+      dashMetrics.style.display = "none";
+      showDashAlert("Loading " + symbol + "...");
+
+      try {
+        const url = API_BASE_URL + "/price/" + encodeURIComponent(symbol);
+        const data = await fetchJsonRateLimited(url, { cacheKey: "price:" + symbol });
+        if (data.error) {
+          showDashAlert("Backend returned: " + data.error, true);
+          return;
+        }
+        dashMetrics.style.display = "block";
+        dashAlert.style.display = "none";
+
+        const price = data.price != null ? data.price : null;
+        document.getElementById("dash-price").textContent = price != null ? price.toFixed(2) + " " + (data.currency || "") : "—";
+        document.getElementById("dash-asset-meta").textContent = (data.asset_type || "?") + " • " + (data.symbol || "");
+        document.getElementById("dash-market-state").textContent = data.marketState || "—";
+        document.getElementById("dash-exchange").textContent = data.exchangeName || "";
+        document.getElementById("dash-prev-close").textContent = data.previousClose != null ? data.previousClose.toFixed(2) : "—";
+        document.getElementById("dash-source").textContent = data.source || "—";
+
+        pushRecent(symbol, price, data.source);
+        updateSnapshot({
+          symbol,
+          asset_type: data.asset_type,
+          price,
+          currency: data.currency,
+          source: data.source,
+          exchangeName: data.exchangeName
+        });
+      } catch (err) {
+        console.error(err);
+        showDashAlert("Failed to load " + symbol + ". Check console/logs.", true);
+      }
+    }
+
+    dashLookupBtn.addEventListener("click", handleDashLookup);
+    dashSymbolInput.addEventListener("keypress", e => {
+      if (e.key === "Enter") handleDashLookup();
+    });
+
+    // ===== SEARCH SECTION =====
+    const searchBtn = document.getElementById("search-go");
+    const searchSymbolInput = document.getElementById("search-symbol");
+    const searchKindSelect = document.getElementById("search-kind");
+    const searchAlert = document.getElementById("search-alert");
+    const searchMetrics = document.getElementById("search-metrics");
+    const chartCanvas = document.getElementById("price-chart");
+    let chartCtx = chartCanvas.getContext("2d");
+    let lastSearchData = null;
+
+    function showSearchAlert(msg, isError = false) {
+      searchAlert.style.display = "flex";
+      searchAlert.classList.toggle("error", isError);
+      searchAlert.classList.toggle("success", !isError);
+      searchAlert.innerHTML = `<span class="icon">${isError ? "⚠️" : "ℹ️"}</span><div>${msg}</div>`;
+    }
+
+    function drawSparkline(timestamps, closes) {
+      const ctx = chartCtx;
+      const w = chartCanvas.width;
+      const h = chartCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      if (!timestamps || !closes || timestamps.length !== closes.length || timestamps.length < 2) {
+        ctx.fillStyle = "#6b7280";
+        ctx.font = "12px system-ui";
+        ctx.fillText("Not enough data for chart", 10, h / 2);
+        return;
+      }
+
+      const xs = timestamps;
+      const ys = closes.map(Number).filter(v => !isNaN(v));
+      if (ys.length < 2) {
+        ctx.fillStyle = "#6b7280";
+        ctx.font = "12px system-ui";
+        ctx.fillText("No valid close data", 10, h / 2);
+        return;
+      }
+
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const padX = 8;
+      const padY = 8;
+      const plotW = w - padX * 2;
+      const plotH = h - padY * 2;
+
+      const stepX = plotW / (xs.length - 1 || 1);
+      const scaleY = maxY === minY ? 1 : plotH / (maxY - minY);
+
+      const startY = ys[0];
+      const endY = ys[ys.length - 1];
+      const rising = endY >= startY;
+
+      ctx.strokeStyle = rising ? "#22c55e" : "#f97373";
+      ctx.lineWidth = 1.3;
+
+      ctx.beginPath();
+      ys.forEach((y, i) => {
+        const px = padX + i * stepX;
+        const py = padY + (maxY - y) * scaleY;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      const grad = ctx.createLinearGradient(0, padY, 0, padY + plotH);
+      grad.addColorStop(0, (rising ? "rgba(34,197,94,0.45)" : "rgba(248,113,113,0.45)"));
+      grad.addColorStop(1, "rgba(15,23,42,0.1)");
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ys.forEach((y, i) => {
+        const px = padX + i * stepX;
+        const py = padY + (maxY - y) * scaleY;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.lineTo(padX + (ys.length - 1) * stepX, padY + plotH);
+      ctx.lineTo(padX, padY + plotH);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    async function handleSearch() {
+      const raw = searchSymbolInput.value.trim();
+      if (!raw) {
+        showSearchAlert("Enter a symbol to search.", true);
+        searchMetrics.style.display = "none";
+        return;
+      }
+      const symbol = raw.toUpperCase();
+      const kind = searchKindSelect.value;
+      showSearchAlert("Loading " + symbol + " (" + kind + ")...");
+      searchMetrics.style.display = "none";
+
+      try {
+        let url;
+        let isCrypto = false;
+        if (kind === "crypto") {
+          url = API_BASE_URL + "/crypto/" + encodeURIComponent(symbol.toLowerCase());
+          isCrypto = true;
+        } else {
+          url = API_BASE_URL + "/price/" + encodeURIComponent(symbol);
+        }
+        const data = await fetchJsonRateLimited(url, { cacheKey: (isCrypto ? "crypto:" : "price:") + symbol });
+        if (data.error) {
+          showSearchAlert("Backend: " + data.error, true);
+          return;
+        }
+        searchAlert.style.display = "none";
+        searchMetrics.style.display = "block";
+        lastSearchData = data;
+
+        let price, currency, assetType, source, exchangeName, timestamps, closes;
+        if (isCrypto) {
+          price = data.price;
+          currency = "USD";
+          assetType = "crypto";
+          source = data.source || "coingecko";
+          exchangeName = "CoinGecko";
+          timestamps = [];
+          closes = [];
+        } else {
+          price = data.price;
+          currency = data.currency || "";
+          assetType = data.asset_type || "stock";
+          source = data.source || "yahoo_chart";
+          exchangeName = data.exchangeName || "";
+          timestamps = data.timestamps || [];
+          closes = data.close || [];
+        }
+
+        document.getElementById("search-price").textContent =
+          price != null ? price.toFixed(2) + " " + currency : "—";
+        document.getElementById("search-asset-meta").textContent =
+          assetType + " • " + (data.symbol || symbol);
+
+        document.getElementById("search-source").textContent = source;
+        document.getElementById("search-backend-meta").textContent =
+          exchangeName || (isCrypto ? "CoinGecko" : "");
+
+        if (!isCrypto && timestamps.length > 1 && closes.length === timestamps.length) {
+          const ys = closes.map(Number).filter(v => !isNaN(v));
+          const minY = Math.min(...ys);
+          const maxY = Math.max(...ys);
+          document.getElementById("search-range").textContent =
+            minY.toFixed(2) + " → " + maxY.toFixed(2);
+          const startY = ys[0];
+          const endY = ys[ys.length - 1];
+          const drawdown = ((endY - startY) / startY) * 100;
+          document.getElementById("search-drawdown").textContent =
+            (endY >= startY ? "+" : "") + drawdown.toFixed(2) + "% over window";
+        } else {
+          document.getElementById("search-range").textContent = "—";
+          document.getElementById("search-drawdown").textContent = isCrypto
+            ? "Crypto endpoint returns spot price only."
+            : "Insufficient OHLC data for analytics.";
+        }
+
+        drawSparkline(timestamps, closes);
+        updateSnapshot({
+          symbol,
+          asset_type: assetType,
+          price,
+          currency,
+          source,
+          exchangeName
+        });
+        pushRecent(symbol, price, source);
+        renderSearchExtra(data);
+        renderSearchJson(data);
+      } catch (err) {
+        console.error(err);
+        showSearchAlert("Failed to load " + symbol + ". Check console/logs.", true);
+      }
+    }
+
+    searchBtn.addEventListener("click", handleSearch);
+    searchSymbolInput.addEventListener("keypress", e => {
+      if (e.key === "Enter") handleSearch();
+    });
+
+    const searchExtra = document.getElementById("search-extra");
+    const searchJsonPre = document.getElementById("search-json");
+    const toggleJsonBtn = document.getElementById("toggle-json");
+    toggleJsonBtn.addEventListener("click", () => {
+      const visible = searchJsonPre.style.display !== "none";
+      searchJsonPre.style.display = visible ? "none" : "block";
+      toggleJsonBtn.textContent = visible ? "Raw JSON" : "Hide JSON";
+    });
+
+    function renderSearchExtra(data) {
+      if (!data) {
+        searchExtra.textContent = "";
+        return;
+      }
+      const fields = [];
+      if (data.stooq_symbol) {
+        fields.push("Stooq symbol: " + data.stooq_symbol);
+      }
+      if (data.previousClose != null) {
+        fields.push("Prev close: " + data.previousClose.toFixed(2));
+      }
+      if (Array.isArray(data.volume) && data.volume.length > 0) {
+        const lastVol = data.volume[data.volume.length - 1];
+        fields.push("Last volume: " + lastVol.toLocaleString());
+      }
+      searchExtra.textContent = fields.join(" · ");
+    }
+
+    function renderSearchJson(data) {
+      searchJsonPre.textContent = JSON.stringify(data, null, 2);
+    }
+
+    // ===== PORTFOLIO STORAGE =====
+    const PF_KEY = "market_console_portfolio_v1";
+    let portfolio = [];
+    function loadPortfolio() {
+      try {
+        const raw = localStorage.getItem(PF_KEY);
+        if (!raw) {
+          portfolio = [];
+        } else {
+          portfolio = JSON.parse(raw);
+        }
+      } catch {
+        portfolio = [];
+      }
+    }
+    function savePortfolio() {
+      localStorage.setItem(PF_KEY, JSON.stringify(portfolio));
+    }
+
+    const pfAlert = document.getElementById("pf-alert");
+    function showPfAlert(msg, isError = false) {
+      pfAlert.style.display = "flex";
+      pfAlert.classList.toggle("error", isError);
+      pfAlert.classList.toggle("success", !isError);
+      pfAlert.innerHTML = `<span class="icon">${isError ? "⚠️" : "ℹ️"}</span><div>${msg}</div>`;
+    }
+
+    document.getElementById("pf-add").addEventListener("click", () => {
+      const symbolRaw = document.getElementById("pf-symbol").value.trim();
+      const qtyRaw = document.getElementById("pf-qty").value.trim();
+      const costRaw = document.getElementById("pf-cost").value.trim();
+      const risk = document.getElementById("pf-risk").value;
+      const notes = document.getElementById("pf-notes").value.trim();
+
+      if (!symbolRaw || !qtyRaw || !costRaw) {
+        showPfAlert("Symbol, quantity, and cost basis are required.", true);
+        return;
+      }
+
+      const symbol = symbolRaw.toUpperCase();
+      const qty = Number(qtyRaw);
+      const cost = Number(costRaw);
+      if (isNaN(qty) || isNaN(cost) || qty <= 0 || cost <= 0) {
+        showPfAlert("Quantity and cost basis must be positive numbers.", true);
+        return;
+      }
+
+      const existingIndex = portfolio.findIndex(p => p.symbol === symbol);
+      const entry = {
+        symbol,
+        qty,
+        cost,
+        risk,
+        notes,
+        lastPrice: null,
+        lastValue: null,
+        lastPL: null,
+        lastPLPct: null,
+      };
+      if (existingIndex >= 0) {
+        portfolio[existingIndex] = entry;
+        showPfAlert("Updated position for " + symbol + ".", false);
+      } else {
+        portfolio.push(entry);
+        showPfAlert("Added " + symbol + " to portfolio.", false);
+      }
+      savePortfolio();
+      renderPortfolioTable();
+      refreshPortfolioPrices();
+    });
+
+    document.getElementById("pf-clear").addEventListener("click", () => {
+      if (!confirm("Clear entire portfolio?")) return;
+      portfolio = [];
+      savePortfolio();
+      renderPortfolioTable();
+      showPfAlert("Portfolio cleared.", false);
+    });
+
+    const pfTableBody = document.querySelector("#pf-table tbody");
+    const pfTotalValueEl = document.getElementById("pf-total-value");
+    const pfLastRefreshEl = document.getElementById("pf-last-refresh");
+
+    let pfSortKey = "symbol";
+    let pfSortAsc = true;
+
+    document.querySelectorAll("#pf-table thead th").forEach(th => {
+      th.addEventListener("click", () => {
+        const key = th.getAttribute("data-sort");
+        if (pfSortKey === key) {
+          pfSortAsc = !pfSortAsc;
+        } else {
+          pfSortKey = key;
+          pfSortAsc = true;
+        }
+        renderPortfolioTable();
+      });
+    });
+
+    function riskClass(risk) {
+      if (risk === "high") return "row-risk-high";
+      if (risk === "medium") return "row-risk-med";
+      return "row-risk-low";
+    }
+
+    function riskLabel(risk) {
+      if (risk === "high") return "High";
+      if (risk === "medium") return "Medium";
+      return "Low";
+    }
+
+    function renderPortfolioTable() {
+      if (portfolio.length === 0) {
+        pfTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:10px; color:#6b7280;">No positions yet.</td></tr>`;
+        pfTotalValueEl.textContent = "—";
+        return;
+      }
+
+      const sorted = [...portfolio].sort((a, b) => {
+        const mult = pfSortAsc ? 1 : -1;
+        switch (pfSortKey) {
+          case "symbol":
+            return a.symbol.localeCompare(b.symbol) * mult;
+          case "risk":
+            const rOrder = { low: 0, medium: 1, high: 2 };
+            return (rOrder[a.risk] - rOrder[b.risk]) * mult;
+          case "value":
+            return ((a.lastValue || 0) - (b.lastValue || 0)) * mult;
+          case "pl":
+            return ((a.lastPL || 0) - (b.lastPL || 0)) * mult;
+          case "plPct":
+            return ((a.lastPLPct || 0) - (b.lastPLPct || 0)) * mult;
+          default:
+            return 0;
+        }
+      });
+
+      let totalValue = 0;
+      const rows = sorted.map(p => {
+        const riskCls = riskClass(p.risk);
+        const plCls = p.lastPL > 0 ? "text-green" : (p.lastPL < 0 ? "text-red" : "text-muted");
+        const plPctCls = p.lastPLPct > 0 ? "text-green" : (p.lastPLPct < 0 ? "text-red" : "text-muted");
+        const val = p.lastValue != null ? p.lastValue : (p.qty * p.cost);
+        totalValue += val;
+
+        return `
+          <tr class="${riskCls}">
+            <td>${p.symbol}</td>
+            <td>${riskLabel(p.risk)}</td>
+            <td>${val.toFixed(2)}</td>
+            <td class="${plCls}">${p.lastPL != null ? p.lastPL.toFixed(2) : "—"}</td>
+            <td class="${plPctCls}">${p.lastPLPct != null ? p.lastPLPct.toFixed(2) + "%" : "—"}</td>
+          </tr>`;
+      }).join("");
+
+      pfTableBody.innerHTML = rows;
+      pfTotalValueEl.textContent = totalValue.toFixed(2);
+    }
+
+    async function refreshPortfolioPrices() {
+      if (portfolio.length === 0) {
+        pfLastRefreshEl.textContent = "—";
+        return;
+      }
+
+      const tasks = portfolio.map(entry => async () => {
+        const symbol = entry.symbol;
+        let url;
+        let isCrypto = false;
+        if (/^(BTC|ETH|SOL|DOGE|ADA|XRP)$/i.test(symbol)) {
+          url = API_BASE_URL + "/crypto/" + encodeURIComponent(symbol.toLowerCase());
+          isCrypto = true;
+        } else {
+          url = API_BASE_URL + "/price/" + encodeURIComponent(symbol);
+        }
+        try {
+          const data = await fetchJsonRateLimited(url, { cacheKey: (isCrypto ? "crypto:" : "price:") + symbol });
+          let price;
+          if (isCrypto) {
+            price = data.price;
+          } else {
+            price = data.price;
+          }
+          if (price != null) {
+            entry.lastPrice = price;
+            entry.lastValue = price * entry.qty;
+            const costTotal = entry.cost * entry.qty;
+            entry.lastPL = entry.lastValue - costTotal;
+            entry.lastPLPct = costTotal > 0 ? (entry.lastPL / costTotal) * 100 : null;
+          }
+        } catch (err) {
+          console.warn("Failed to refresh price for", symbol, err);
+        }
+      });
+
+      for (const task of tasks) {
+        await task();
+      }
+
+      pfLastRefreshEl.textContent = new Date().toLocaleTimeString();
+      renderPortfolioTable();
+      savePortfolio();
+    }
+
+    loadPortfolio();
+    renderPortfolioTable();
+    refreshPortfolioPrices();
+    setInterval(refreshPortfolioPrices, 60_000);
+
+    renderRecent();
+    updateStatsUI();
+  </script>
+</body>
+</html>
